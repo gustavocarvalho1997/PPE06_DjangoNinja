@@ -1,7 +1,7 @@
 from ninja import Router
 from ninja.errors import HttpError
 from typing import List
-from treino.schemas import AlunoSchema, ProgressoAlunoSchema
+from treino.schemas import AlunoSchema, ProgressoAlunoSchema, AulaRealizadaSchema
 from treino.models import Aluno, AulaConcluida
 from treino.graduacao import calculate_lesson_to_upgrade, order_belt
 
@@ -33,7 +33,7 @@ def listar_alunos(request):
     alunos = Aluno.objects.all()
     return alunos
 
-@treino_router.get("/progresso_aluno/", response={200: ProgressoAlunoSchema}, description="Verificar progresso do aluno")
+@treino_router.get("/progresso_aluno/", response={200: ProgressoAlunoSchema, 404: str}, description="Verificar progresso do aluno")
 def progresso_aluno(request, email_aluno: str):
     aluno = Aluno.objects.get(email=email_aluno)
     if not aluno:
@@ -51,4 +51,25 @@ def progresso_aluno(request, email_aluno: str):
         "total_aulas": total_aulas_concluidas_faixa,
         "aulas_necessarias_para_proxima_faixa": aulas_faltantes
     }
+
+@treino_router.post("/aula_realizada/", response={200: str, 400: str, 404: str}, description="Registrar aula realizada")
+def aula_realizada(request, aula_realizada: AulaRealizadaSchema):
+    qtd = aula_realizada.dict()['qtd']
+    email_aluno = aula_realizada.dict()['email_aluno']
+
+    if qtd <= 0:
+        raise HttpError(400, "Quantidade de aulas inválida")
     
+    aluno = Aluno.objects.get(email=email_aluno)
+
+    if not aluno:
+        raise HttpError(404, "Aluno não encontrado")
+    
+    for _ in range(0, qtd):
+        ac = AulaConcluida(
+            aluno=aluno,
+            faixa_atual=aluno.faixa
+        )
+        ac.save()
+    
+    return 200, f"Aula marcada como realizada para o aluno {aluno.nome}"
