@@ -1,5 +1,6 @@
 from ninja import ModelSchema, Schema
 from treino.models import Aluno
+from typing import Optional
 
 class AlunoSchema(ModelSchema):
     class Meta:
@@ -12,3 +13,7 @@ class ProgressoAlunoSchema(Schema):
     faixa: str
     total_aulas: int
     aulas_necessarias_para_proxima_faixa: int
+
+class AulaRealizadaSchema(Schema):
+    qtd: Optional[int] = 1
+    email_aluno: str
