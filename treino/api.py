@@ -1,6 +1,7 @@
 from ninja import Router
 from ninja.errors import HttpError
 from typing import List
+from datetime import date
 from treino.schemas import AlunoSchema, ProgressoAlunoSchema, AulaRealizadaSchema
 from treino.models import Aluno, AulaConcluida
 from treino.graduacao import calculate_lesson_to_upgrade, order_belt
@@ -73,3 +74,22 @@ def aula_realizada(request, aula_realizada: AulaRealizadaSchema):
         ac.save()
     
     return 200, f"Aula marcada como realizada para o aluno {aluno.nome}"
+
+@treino_router.put("/alunos/{aluno_id}/", response={200: AlunoSchema, 400: str, 404: str}, description="Atualizar dados do aluno")
+def update_aluno(request, aluno_id: int, aluno_data: AlunoSchema):
+    aluno = Aluno.objects.get(id=aluno_id)
+
+    if not aluno:
+        raise HttpError(404, "Aluno não encontrado")
+    
+    idade = date.today() - aluno.data_nascimento
+    
+    if int(idade.days / 365) < 18 and aluno_data.dict()['faixa'] in ('A', 'R', 'M', 'P'):
+        raise HttpError(400, "Aluno menor de idade não pode receber essa faixa")
+    
+    for attr, value in aluno_data.dict().items():
+        if value:
+            setattr(aluno, attr, value)
+    
+    aluno.save()
+    return aluno
